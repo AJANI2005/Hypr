@@ -2,18 +2,17 @@
 
 print_usage() {
   cat <<EOF
-Usage: $(basename "${0}") <action> [step] 
+Usage: $(basename "${0}") <action> [value] 
 
 Actions:
-    i    <i>ncrease brightness [+5%]
-    d    <d>ecrease brightness [-5%]
-
-Optional:
-    step  brightness change step [default: 5]
+    i    <i>ncrease brightness [+value%] [default: 5]
+    d    <d>ecrease brightness [-value%] [default: 5]
+    s    <s>et brightness to exact value (0-100%)
 
 Examples:
     $(basename "${0}") i 10    # Increase brightness by 10%
     $(basename "${0}") d       # Decrease brightness by default step (5%)
+    $(basename "${0}") s 40    # Set brightness to 40%
 EOF
   exit 1
 }
@@ -30,8 +29,6 @@ get_brightness() {
   brightnessctl -m | grep -o '[0-9]\+%' | head -c-2
 }
 
-step="${2:-5}"
-
 clamp_brightness() {
   local new_brightness=$1
   if (( new_brightness > 100 )); then
@@ -43,28 +40,34 @@ clamp_brightness() {
   fi
 }
 
+step="${2:-5}"
+
 case $1 in
 i | -i)
   brightness=$(get_brightness)
-
   [ "$brightness" -lt 10 ] && step=1
-
   new_brightness=$((brightness + step))
   new_brightness=$(clamp_brightness "$new_brightness")
-
   delta="+${step}%"
   brightnessctl set "${new_brightness}%"
   send_notification "$delta"
   ;;
 d | -d)
   brightness=$(get_brightness)
-
   [ "$brightness" -le 10 ] && step=1
-
   new_brightness=$((brightness - step))
   new_brightness=$(clamp_brightness "$new_brightness")
-
   delta="-${step}%"
+  brightnessctl set "${new_brightness}%"
+  send_notification "$delta"
+  ;;
+s | -s)
+  if [[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]]; then
+    echo "Please provide a numeric brightness value (0-100)."
+    print_usage
+  fi
+  new_brightness=$(clamp_brightness "$2")
+  delta="set to ${new_brightness}%"
   brightnessctl set "${new_brightness}%"
   send_notification "$delta"
   ;;
@@ -72,3 +75,4 @@ d | -d)
   print_usage
   ;;
 esac
+
