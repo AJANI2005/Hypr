@@ -2,18 +2,17 @@
 
 print_usage() {
   cat <<EOF
-Usage: $(basename "$0") <action> [step]
+Usage: $(basename "$0") <action> [value]
 
 Actions:
-    i    <i>ncrease volume [+5%]
-    d    <d>ecrease volume [-5%]
+    i    <i>ncrease volume [+value%] [default: 5]
+    d    <d>ecrease volume [-value%] [default: 5]
     m    toggle <m>ute
-
-Optional:
-    step  volume change step [default: 5]
+    s    <s>et volume to exact percentage (0-100)
 
 Examples:
     $(basename "$0") i 10    # Increase volume by 10%
+    $(basename "$0") s 40    # Set volume to 40%
     $(basename "$0") m       # Toggle mute
 EOF
   exit 1
@@ -48,7 +47,6 @@ change_volume() {
 
   vol=$(pamixer --get-volume)
 
-  # Ensure volume is within bounds
   if [ "${sign}" = "+" ] && [ "${vol}" -ge 100 ]; then
     notify_vol 100 "..."
     return 0
@@ -57,11 +55,10 @@ change_volume() {
     return 0
   fi
 
-  # Adjust volume
   wpctl set-volume @DEFAULT_SINK@ "$step%$sign"
   vol=$(pamixer --get-volume)
 
-  # Clamp volume to 0-100%
+  # Clamp
   if [ "${vol}" -gt 100 ]; then
     vol=100
     wpctl set-volume @DEFAULT_SINK@ 100%
@@ -72,6 +69,24 @@ change_volume() {
 
   [ "${action}" = "d" ] && sign="\-"
   notify_vol "$vol" "$sign$step%"
+}
+
+set_volume() {
+  local vol=$1
+  if [[ -z "$vol" || ! "$vol" =~ ^[0-9]+$ ]]; then
+    echo "Please provide a valid volume value (0–100)."
+    print_usage
+  fi
+
+  # Clamp
+  if (( vol > 100 )); then
+    vol=100
+  elif (( vol < 0 )); then
+    vol=0
+  fi
+
+  wpctl set-volume @DEFAULT_SINK@ "${vol}%"
+  notify_vol "$vol" "set to ${vol}%"
 }
 
 toggle_mute() {
@@ -85,6 +100,7 @@ icodir="$HOME/.config/dunst/icons"
 # Execute action
 case $1 in
 i | d) change_volume "$1" "${2:-$step}" ;;
+s) set_volume "$2" ;;
 m) toggle_mute ;;
 *) print_usage ;;
 esac
