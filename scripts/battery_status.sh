@@ -15,25 +15,23 @@ low=20
 full=79
 
 case "$status" in
-  "Charging")
-    echo "charging"
-    ;;
-  "Discharging")
-    if [ "$capacity" -le "$low" ]; then
-      echo "discharging-low"
-    else
-      echo "discharging"
-    fi
-    ;;
-  "Not charging")
-    if [ "$capacity" -ge "$full" ]; then
-      echo "full"
-    else
-      echo "not-charging"
-    fi
-    ;;
-  *)
-    echo "unknown"
-    ;;
+"Charging")
+  echo "charging"
+  ;;
+"Discharging")
+  if [ "$capacity" -le "$low" ]; then
+    echo "discharging-low"
+  else
+    echo "discharging"
+  fi
+  ;;
+"Full")
+  echo "full"
+  ;;
+"Not charging")
+  echo "not-charging"
+  ;;
+*)
+  echo "unknown"
+  ;;
 esac
-
